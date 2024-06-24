@@ -9,7 +9,7 @@ from alpaca.data.requests import StockBarsRequest
 
 # Functions
 path = "../Alpaca_Keys.csv"
-
+        
 with open(path, mode='r', newline='') as file:
     csv_reader = csv.reader(file)
     API_KEY = next(csv_reader)[0]
