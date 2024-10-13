@@ -9,11 +9,12 @@ import csv
 from alpaca.data import StockHistoricalDataClient, TimeFrame
 from alpaca.data.requests import StockBarsRequest
 
-# Functions
+
+'''Connecting to Alpaca'''
 
 def connect():
     '''connects to Alpaca API returns data_client'''
-    path = "../Alpaca_Keys.csv"
+    path = "../API_Keys/Alpaca_Keys.csv"
     with open(path, mode='r', newline='') as file:
         csv_reader = csv.reader(file)
         API_KEY = next(csv_reader)[0]
@@ -21,6 +22,45 @@ def connect():
         #TWELVE_DATA_KEY = next(csv_reader)[0]
     data_client = StockHistoricalDataClient(API_KEY, ALPACA_API_SECRET_KEY)
     return data_client
+
+
+
+
+'''Formats the data as data to be used in NN'''
+
+def create_t_and_t(num, stock_array, spy_array):
+    '''Creates the input for a NN x_,y_traing and x_,y_test. right now randomly selects from 80% sampling instead of a single run through all -- could change'''
+    x_train = np.zeros((num, 14))
+    y_train = np.zeros(num)
+    x_test = np.zeros((len(stock_array) - int(len(stock_array)*.8), 14))
+    y_test = np.zeros(len(stock_array) - int(len(stock_array)*.8))
+
+    for i in range(num):
+        random_num = random.randint(0, int(len(stock_array)*.8) - 8)
+        x_train[i, :7] = spy_array[random_num:random_num + 7]
+        x_train[i, 7:14] = stock_array[random_num:random_num + 7]
+        if (stock_array[random_num+8] > 0.0): 
+            y_train[i] = 1
+        else:
+            y_train[i] = 0
+    for i in range(int(len(stock_array) *.8), len(stock_array)):
+        k = i - int(len(stock_array) *.8)
+        x_test[k, :7] = spy_array[k:k + 7]
+        x_test[k, 7:14] = stock_array[k:k + 7]
+        if (stock_array[k+8] > 0.0): 
+            y_test[k] = 1
+        else:
+            y_test[k] = 0
+    return x_train, y_train, x_test, y_test
+
+
+
+
+
+
+
+'''other Funs'''
+
 
 def trading_days(end_d, days_back):
     "Used in Create function; Formats the days"
@@ -100,7 +140,9 @@ def create_data(stock, days_back, data_client):
     store_data(stock, percent_change)
     add_ending(stock)
 
-def all_stocks_1050(data_client):
+
+
+def all_stocks_1050(data_client):   # need to change as it varies by day
     '''For all stocks in list it will write back 1050 days and convert into new csv for them'''
     path = "../Stocks-List.csv"
     with open(path, mode='r', newline='') as file:
@@ -112,8 +154,10 @@ def all_stocks_1050(data_client):
             Stock = next(csv_reader)[0]
             print(Stock)
                      
+
+
 def get_array(stock):
-    '''Returns an array of the data from csv of stock'''
+    '''Grabs data of stock that is on this computer and sorten to 2 dec points and rm dates '''
     path_stock = f"Stocks/{stock}.csv"
     stock_array = []
 
@@ -133,3 +177,9 @@ def sum(array, start, end):
     for i in range(end-start):
         sum += array[start+i]
     return sum
+
+
+
+
+
+
