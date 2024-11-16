@@ -69,6 +69,38 @@ def trading_days(end_d, days_back):
     td = schedule.index[0 : days_back] 
     return td
 
+# def call(start_date, stock, trading_days, percent_change, data_client):
+#     '''A subcall used for Create Data'''
+#     request_params = StockBarsRequest(
+#         symbol_or_symbols=[stock],            
+#         timeframe=TimeFrame.Day,
+#         start=start_date
+#     )
+
+#     # Fetch the bars data
+#     bars_data = data_client.get_stock_bars(request_params)
+#     bars_df = bars_data.df
+    
+#     # Reset the index to separate the columns
+#     bars_df = bars_df.reset_index()
+
+#     # Convert the timezone of the timestamp column
+#     bars_df['timestamp'] = bars_df['timestamp'].dt.tz_convert('America/New_York')
+
+#     # Set the index back to symbol and timestamp if needed
+#     bars_df = bars_df.set_index(['symbol', 'timestamp'])
+
+#     #percent_change = [[0, 0] for i in range(len(trading_days))]
+#     for i in range(len(trading_days)):
+#         specific_date = pd.to_datetime(trading_days[i]).tz_localize('America/New_York')
+#         #print(specific_date)
+#         open_price = bars_df.loc[(stock, specific_date), 'open']
+#         close_price = bars_df.loc[(stock, specific_date), 'close']
+#         #percent_change[i][0] = f"{specific_date.date()} "
+#         #percent_change[i][1] = ((close_price/open_price)-1)*100
+#         percent_change.insert(0, [f"{specific_date.date()} ", ((close_price/open_price)-1)*100])
+#     return percent_change
+
 def call(start_date, stock, trading_days, percent_change, data_client):
     '''A subcall used for Create Data'''
     request_params = StockBarsRequest(
@@ -79,27 +111,34 @@ def call(start_date, stock, trading_days, percent_change, data_client):
 
     # Fetch the bars data
     bars_data = data_client.get_stock_bars(request_params)
-    bars_df = bars_data.df
-    
-    # Reset the index to separate the columns
-    bars_df = bars_df.reset_index()
+    bars_df = bars_data.df.reset_index()
 
     # Convert the timezone of the timestamp column
     bars_df['timestamp'] = bars_df['timestamp'].dt.tz_convert('America/New_York')
-
-    # Set the index back to symbol and timestamp if needed
     bars_df = bars_df.set_index(['symbol', 'timestamp'])
 
-    #percent_change = [[0, 0] for i in range(len(trading_days))]
-    for i in range(len(trading_days)):
-        specific_date = pd.to_datetime(trading_days[i]).tz_localize('America/New_York')
-        #print(specific_date)
-        open_price = bars_df.loc[(stock, specific_date), 'open']
-        close_price = bars_df.loc[(stock, specific_date), 'close']
-        #percent_change[i][0] = f"{specific_date.date()} "
-        #percent_change[i][1] = ((close_price/open_price)-1)*100
-        percent_change.insert(0, [f"{specific_date.date()} ", ((close_price/open_price)-1)*100])
+    # Accumulate results
+    results = []
+    for date in trading_days:
+        specific_date = pd.to_datetime(date).tz_localize('America/New_York') if not pd.Timestamp(date).tz else pd.to_datetime(date).tz_convert('America/New_York')
+        if (stock, specific_date) in bars_df.index:
+            open_price = bars_df.loc[(stock, specific_date), 'open']
+            close_price = bars_df.loc[(stock, specific_date), 'close']
+            results.append([f"{specific_date.date()} ", ((close_price / open_price) - 1) * 100])
+
+    percent_change.extend(results)
     return percent_change
+
+
+
+
+
+
+
+
+
+
+
 
 def store_data(stock, percent_change):
     '''Stores Array of stocks within a CSV'''
@@ -125,11 +164,11 @@ def create_data(stock, days_back, data_client):
     count = days_back
     
     while(True):
-        if count >= 200:
+        if count > 200: 
             td= trading_days(today - pd.Timedelta(days=count-200), 200) # start and end dates
             start_date = today - pd.Timedelta(days=count)
             call(start_date, stock, td, percent_change, data_client)
-            count -= 200
+            count -= 200 
             #print(f"1' delay at {count}")
            # time.sleep(60)
         else: 
